@@ -98,10 +98,18 @@ sleep 10
 
 # train.json is the last thing shuffle.py writes. Never publish a directory without it, since
 # training picks the newest directory and would treat a broken one as having no data.
+# Crashes in shuffle.py already abort above via set -e and pipefail, so reaching here without
+# train.json means shuffle.py exited successfully without writing output, which it does
+# intentionally when there is not enough data yet (e.g. -min-rows at the start of a run).
+# That is not an error, so don't fail and kill the calling loop, just skip this round.
 if [ ! -f "$BASEDIR"/shuffleddata/"$OUTDIR".tmp/train.json ]
 then
-  echo "Shuffle output is missing train.json, leaving it as" "$BASEDIR"/shuffleddata/"$OUTDIR".tmp
-  exit 1
+  echo "Shuffle produced no train.json, probably not enough data yet, skipping this round"
+  rm -rf "$BASEDIR"/shuffleddata/"$OUTDIR".tmp
+  echo "Finished shuffle at" $(date "+%Y-%m-%d %H:%M:%S")
+  echo ""
+  echo ""
+  exit 0
 fi
 mv "$BASEDIR"/shuffleddata/"$OUTDIR".tmp "$BASEDIR"/shuffleddata/"$OUTDIR"
 
